@@ -36,5 +36,6 @@ async def receive_session(message: Message, state: FSMContext):
 @router.callback_query(F.data == "set_session")
 async def cb_set_session(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await cmd_set_session(callback.message, state)
-    await callback.message.delete()
+    # Fix: set state with correct user context
+    await state.set_state(SessionState.waiting_for_session)
+    await callback.message.answer("📝 Please send your Instagram session ID (sessionid cookie):\n\nYou can find it in browser cookies after logging in.")
