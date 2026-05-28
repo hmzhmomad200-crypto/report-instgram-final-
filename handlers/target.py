@@ -44,5 +44,10 @@ async def receive_target(message: Message, state: FSMContext):
 @router.callback_query(F.data == "set_target")
 async def cb_set_target(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    await cmd_set_target(callback.message, state)
-    await callback.message.delete()
+    # Fix: use callback.from_user.id not callback.message.from_user.id
+    user_data = await get_user_data(callback.from_user.id)
+    if not user_data or not user_data.get('session_id'):
+        await callback.message.answer("❌ Please set your session first using /set_session")
+        return
+    await state.set_state(TargetState.waiting_for_username)
+    await callback.message.answer("🎯 Send the target Instagram username (without @)")
