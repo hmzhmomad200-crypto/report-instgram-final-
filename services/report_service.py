@@ -8,6 +8,10 @@ class ReportService:
         self.reporter = InstagramReporter()
         self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REPORTS)
     
+    async def report(self, target_user_id: str, session_id: str, report_type: Dict) -> bool:
+        """إرسال بلاغ واحد مباشرة"""
+        return await self.reporter.report(target_user_id, session_id, report_type)
+    
     async def run_reports(self, session_id: str, target_id: str, report_keys: List[str], progress_callback: Callable[[int, int, str, bool], Awaitable[None]]):
         total = len(report_keys)
         success_count = 0
