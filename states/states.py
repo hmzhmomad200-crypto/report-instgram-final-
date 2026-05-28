@@ -8,7 +8,7 @@ class TargetState(StatesGroup):
 
 class ReportState(StatesGroup):
     selecting_types = State()
-    waiting_for_random_count = State()   # جديد
+    waiting_for_random_count = State()
 
 class BroadcastState(StatesGroup):
     waiting_for_message = State()
