@@ -11,6 +11,7 @@ async def init_db():
                 target_username TEXT,
                 target_id TEXT,
                 report_types TEXT,
+                loop_count INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -53,6 +54,13 @@ async def save_report_types(user_id: int, report_types: str):
         """, (report_types, user_id))
         await db.commit()
 
+async def save_loop_count(user_id: int, loop_count: int):
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute("""
+            UPDATE users SET loop_count = ? WHERE user_id = ?
+        """, (loop_count, user_id))
+        await db.commit()
+
 async def get_user_data(user_id: int):
     async with aiosqlite.connect(DATABASE_PATH) as db:
         async with db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)) as cursor:
@@ -65,6 +73,7 @@ async def get_user_data(user_id: int):
                     "target_username": row[3],
                     "target_id": row[4],
                     "report_types": row[5],
+                    "loop_count": row[6] if len(row) > 6 else 1,
                 }
             return None
 
