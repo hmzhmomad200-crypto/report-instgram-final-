@@ -10,9 +10,8 @@ from services.report_service import ReportService
 from states.states import ReportState
 from utils.instagram_reporter import REPORT_TYPES
 
-# قائمة أنواع البلاغات التي تعمل (يجب أن تطابق الموجودة في inline.py)
-# يمكنك تعديلها حسب الأنواع التي تثبت صلاحيتها
-WORKING_TYPES = ["2", "3", "6", "28", "33"]
+# قائمة بجميع مفاتيح أنواع البلاغات (1 إلى 34)
+ALL_TYPES = list(REPORT_TYPES.keys())
 
 router = Router()
 report_service = ReportService()
@@ -75,7 +74,7 @@ async def cb_random_types(callback: CallbackQuery, state: FSMContext):
     await state.update_data(previous_selected=current_selected)
     await state.set_state(ReportState.waiting_for_random_count)
     await callback.message.answer(
-        f"🎲 أرسل عدد الأنواع التي تريد اختيارها عشوائياً (1 إلى {len(WORKING_TYPES)}):\n"
+        f"🎲 أرسل عدد الأنواع التي تريد اختيارها عشوائياً (1 إلى {len(ALL_TYPES)}):\n"
         "مثال: 5"
     )
 
@@ -83,11 +82,11 @@ async def cb_random_types(callback: CallbackQuery, state: FSMContext):
 async def receive_random_count(message: Message, state: FSMContext):
     try:
         count = int(message.text.strip())
-        max_count = len(WORKING_TYPES)
+        max_count = len(ALL_TYPES)
         if count < 1 or count > max_count:
             await message.answer(f"❌ الرقم يجب أن يكون بين 1 و {max_count}. حاول مرة أخرى.")
             return
-        selected_keys = random.sample(WORKING_TYPES, count)
+        selected_keys = random.sample(ALL_TYPES, count)
         await state.update_data(selected_types=selected_keys)
         await state.set_state(ReportState.selecting_types)
         await message.answer(
@@ -166,13 +165,11 @@ async def cb_confirm_yes(callback: CallbackQuery, state: FSMContext):
         except Exception:
             pass
         await log_report(user_id, report_type['name'], success)
-        # تأخير عشوائي بين 10 و 20 ثانية
         await asyncio.sleep(random.uniform(10, 20))
     
     end_time = asyncio.get_event_loop().time()
     elapsed = end_time - start_time
     
-    # اسم أول نوع بلاغ للعرض (يمكنك تغييره)
     first_type_name = REPORT_TYPES.get(report_keys[0], {}).get('name', 'بلاغ') if report_keys else 'بلاغ'
     
     final_text = (
