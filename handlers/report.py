@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from keyboards.inline import get_report_types_keyboard, get_main_keyboard
-from database.db import get_user_data, save_report_types, log_report
+from database.db import get_user_data, save_report_types, log_report, save_loop_count
 from services.report_service import ReportService
 from states.states import ReportState
 from utils.instagram_reporter import REPORT_TYPES
@@ -95,6 +95,8 @@ async def cb_loop_choice(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("📝 Please enter the number of repetitions (1-500):")
         return
     loop_count = int(choice)
+    # حفظ loop_count في قاعدة البيانات
+    await save_loop_count(callback.from_user.id, loop_count)
     await state.update_data(loop_count=loop_count)
     await state.set_state(None)
     await _send_report_confirmation(callback.message, callback.from_user.id, loop_count)
@@ -106,6 +108,7 @@ async def receive_custom_loop(message: Message, state: FSMContext):
         if loop_count < 1 or loop_count > 500:
             await message.answer("❌ Please enter a number between 1 and 500.")
             return
+        await save_loop_count(message.from_user.id, loop_count)
         await state.update_data(loop_count=loop_count)
         await state.set_state(None)
         await _send_report_confirmation(message, message.from_user.id, loop_count)
@@ -146,8 +149,12 @@ async def cb_confirm_yes(callback: CallbackQuery, state: FSMContext):
     session_id = user_data['session_id']
     target_id = user_data['target_id']
     
+    # جلب loop_count من قاعدة البيانات إذا لم يكن في state
     state_data = await state.get_data()
-    loop_count = state_data.get('loop_count', 1)
+    loop_count = state_data.get('loop_count')
+    if loop_count is None:
+        loop_count = user_data.get('loop_count', 1)
+    
     total_reports = len(report_keys) * loop_count
     progress_msg = await callback.message.edit_text(f"🔄 Starting reports...\n0/{total_reports} completed (loop {loop_count}x)")
     
@@ -173,7 +180,7 @@ async def cb_confirm_yes(callback: CallbackQuery, state: FSMContext):
             except Exception:
                 pass
             await log_report(user_id, report_type['name'], success)
-            await asyncio.sleep(3)  # تأخير 3 ثوانٍ بين كل بلاغ
+            await asyncio.sleep(3)  # تأخير 3 ثوانٍ
     
     final_text = f"✅ Reporting completed!\nSuccess: {success_total}\nFailed: {failed_total}\nTotal: {total_reports} (loops: {loop_count})"
     await progress_msg.edit_text(final_text)
@@ -199,4 +206,5 @@ async def cb_my_data(callback: CallbackQuery):
         text += f"Username: @{user_data.get('username') or 'N/A'}\n"
         text += f"Target: @{user_data.get('target_username') or 'Not set'}\n"
         text += f"Report types: {len(user_data.get('report_types', '').split(',')) if user_data.get('report_types') else 0}\n"
+        text += f"Loop count: {user_data.get('loop_count', 1)}\n"
     await callback.message.answer(text, reply_markup=get_main_keyboard())
